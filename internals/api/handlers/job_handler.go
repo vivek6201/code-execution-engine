@@ -5,23 +5,24 @@ import (
 
 	"github.com/code-execution-engine/internals/api/dtos"
 	"github.com/code-execution-engine/internals/core/job"
+	"github.com/code-execution-engine/internals/infra/queue"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type JobHandler struct {
-	service *execution.Service
+	queue *queue.RedisQueue
 }
 
-func NewJobHandler(s *execution.Service) *JobHandler {
+func NewJobHandler(q *queue.RedisQueue) *JobHandler {
 	return &JobHandler{
-		service: s,
+		queue: q,
 	}
 }
 
 func (h *JobHandler) RunCode(c *gin.Context) {
 	var req dtos.CreateJobRequest
 
-	// bind + validate request
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -32,14 +33,37 @@ func (h *JobHandler) RunCode(c *gin.Context) {
 		return
 	}
 
-	// convert dtos request into domain request
 	j := job.Job{
 		Code:     req.Code,
 		Language: req.Language,
 		Input:    req.Input,
 	}
+	for _, tc := range req.TestCases {
+		j.TestCases = append(j.TestCases, job.TestCase{
+			Input:          tc.Input,
+			ExpectedOutput: tc.ExpectedOutput,
+		})
+	}
 
-	result := h.service.Execute(j)
+	jobID := uuid.New().String()
+	if err := h.queue.Enqueue(c.Request.Context(), jobID, j); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to enqueue job"})
+		return
+	}
 
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusAccepted, gin.H{
+		"job_id":  jobID,
+		"message": "Job queued successfully",
+	})
+}
+
+func (h *JobHandler) GetResult(c *gin.Context) {
+	jobID := c.Param("id")
+	res, err := h.queue.GetResult(c.Request.Context(), jobID)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"status": "PENDING"})
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
 }

@@ -1,4 +1,4 @@
-package worker
+package main
 
 import "github.com/code-execution-engine/internals/app"
 
