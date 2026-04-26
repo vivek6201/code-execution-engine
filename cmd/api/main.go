@@ -1,5 +1,7 @@
 package main
 
-func main() {
+import "github.com/code-execution-engine/internals/app"
 
+func main() {
+	app.StartServer()
 }
