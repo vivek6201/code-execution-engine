@@ -17,9 +17,8 @@ type CreateJobRequest struct {
 func (r *CreateJobRequest) Validate() error {
 	switch r.Language {
 	case "cpp", "python", "java":
-		// valid
+		return nil
 	default:
 		return errors.New("invalid language")
 	}
-	return nil
 }

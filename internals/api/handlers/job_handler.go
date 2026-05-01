@@ -4,19 +4,23 @@ import (
 	"net/http"
 
 	"github.com/code-execution-engine/internals/api/dtos"
+	"github.com/code-execution-engine/internals/api/utility"
 	"github.com/code-execution-engine/internals/core/job"
 	"github.com/code-execution-engine/internals/infra/queue"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 type JobHandler struct {
-	queue *queue.RedisQueue
+	queue       *queue.RedisQueue
+	redisClient *redis.Client
 }
 
-func NewJobHandler(q *queue.RedisQueue) *JobHandler {
+func NewJobHandler(q *queue.RedisQueue, redisClient *redis.Client) *JobHandler {
 	return &JobHandler{
-		queue: q,
+		queue:       q,
+		redisClient: redisClient,
 	}
 }
 
@@ -24,12 +28,12 @@ func (h *JobHandler) RunCode(c *gin.Context) {
 	var req dtos.CreateJobRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utility.ErrorResponse(c, http.StatusBadRequest, "Invalid request body", err.Error())
 		return
 	}
 
 	if err := req.Validate(); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utility.ErrorResponse(c, http.StatusBadRequest, "Validation failed", err.Error())
 		return
 	}
 
@@ -46,24 +50,33 @@ func (h *JobHandler) RunCode(c *gin.Context) {
 	}
 
 	jobID := uuid.New().String()
+
 	if err := h.queue.Enqueue(c.Request.Context(), jobID, j); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to enqueue job"})
+		utility.ErrorResponse(c, http.StatusInternalServerError, "Failed to enqueue job", err.Error())
 		return
 	}
 
-	c.JSON(http.StatusAccepted, gin.H{
-		"job_id":  jobID,
-		"message": "Job queued successfully",
+	utility.SuccessResponse(c, http.StatusAccepted, "Job queued successfully", gin.H{
+		"job_id": jobID,
 	})
 }
 
 func (h *JobHandler) GetResult(c *gin.Context) {
 	jobID := c.Param("id")
-	res, err := h.queue.GetResult(c.Request.Context(), jobID)
+	res, err := queue.GetResult(c.Request.Context(), h.redisClient, jobID)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"status": "PENDING"})
+		utility.ErrorResponse(c, http.StatusNotFound, "Job not found", "no job found with the given ID")
 		return
 	}
 
-	c.JSON(http.StatusOK, res)
+	// Determine message based on status
+	msg := "Result fetched successfully"
+	switch res.Status {
+	case "QUEUED":
+		msg = "Job is queued for processing"
+	case "PROCESSING":
+		msg = "Job is being processed"
+	}
+
+	utility.SuccessResponse(c, http.StatusOK, msg, res)
 }

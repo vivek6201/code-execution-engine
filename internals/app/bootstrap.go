@@ -11,6 +11,7 @@ import (
 	"github.com/code-execution-engine/internals/engine/executor"
 	"github.com/code-execution-engine/internals/engine/runners"
 	"github.com/code-execution-engine/internals/engine/runners/languages"
+	"github.com/code-execution-engine/internals/infra/cache"
 	"github.com/code-execution-engine/internals/infra/isolation"
 	"github.com/code-execution-engine/internals/infra/queue"
 	"github.com/gin-contrib/cors"
@@ -19,18 +20,20 @@ import (
 
 func StartServer() {
 	cfg := config.Load()
-	q := queue.NewRedisQueue(cfg.RedisUrl)
+	redisClient := cache.NewRedisClient(cfg.RedisUrl)
+	q := queue.NewRedisQueue(redisClient)
 
 	r := gin.Default()
 	r.Use(cors.Default())
-	routes.SetupRoutes(r, q)
+	routes.SetupRoutes(r, q, redisClient)
 
 	r.Run(":8080")
 }
 
 func StartWorker() {
 	cfg := config.Load()
-	q := queue.NewRedisQueue(cfg.RedisUrl)
+	redisClient := cache.NewRedisClient(cfg.RedisUrl)
+	q := queue.NewRedisQueue(redisClient)
 
 	containerClient := isolation.NewClient()
 
@@ -56,7 +59,7 @@ func StartWorker() {
 		log.Printf("Executing job %s", jobID)
 		res := service.Execute(j)
 
-		err = q.SetResult(ctx, jobID, res)
+		err = queue.SetResult(ctx, redisClient, jobID, res)
 		if err != nil {
 			log.Printf("Error saving result for job %s: %v", jobID, err)
 		} else {

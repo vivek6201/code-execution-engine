@@ -3,10 +3,12 @@ package result
 type Status string
 
 const (
-	StatusSuccess Status = "SUCCESS"
-	StatusFailed  Status = "FAILED"
-	StatusError   Status = "ERROR"
-	StatusTLE     Status = "TLE"
+	StatusQueued     Status = "QUEUED"
+	StatusProcessing Status = "PROCESSING"
+	StatusSuccess    Status = "SUCCESS"
+	StatusFailed     Status = "FAILED"
+	StatusError      Status = "ERROR"
+	StatusTLE        Status = "TLE"
 )
 
 type TestCaseResult struct {

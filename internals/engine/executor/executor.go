@@ -40,3 +40,17 @@ func (e *Executor) Run(language, code, input string) runners.ExecuteResult {
 	}
 	return *res
 }
+
+// RunBatch executes code once and runs it against multiple inputs in a single container.
+// Accepts a context for cancellation support (early exit on failure).
+func (e *Executor) RunBatch(ctx context.Context, language, code string, inputs []string) ([]runners.ExecuteResult, error) {
+	r, err := e.factory.GetRunner(language)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.RunBatch(ctx, &runners.BatchRequest{
+		Code:   code,
+		Inputs: inputs,
+	})
+}

@@ -5,6 +5,7 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    restart: unless-stopped
 
   api:
     build:
@@ -16,6 +17,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       - redis
+    restart: unless-stopped
 
   worker:
     build:
@@ -29,3 +31,4 @@ services:
       - redis
     deploy:
       replicas: 3
+    restart: unless-stopped

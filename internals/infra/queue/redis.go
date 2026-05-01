@@ -3,7 +3,6 @@ package queue
 import (
 	"context"
 	"encoding/json"
-	"time"
 
 	"github.com/code-execution-engine/internals/core/job"
 	"github.com/code-execution-engine/internals/core/result"
@@ -14,17 +13,14 @@ type RedisQueue struct {
 	client *redis.Client
 }
 
-func NewRedisQueue(redisURL string) *RedisQueue {
-	if redisURL == "" {
-		redisURL = "redis://localhost:6379/0"
-	}
-	opts, err := redis.ParseURL(redisURL)
-	if err != nil {
-		opts = &redis.Options{Addr: "localhost:6379"}
-	}
-	return &RedisQueue{
-		client: redis.NewClient(opts),
-	}
+// NewRedisQueue creates a queue service using an existing Redis client.
+func NewRedisQueue(client *redis.Client) *RedisQueue {
+	return &RedisQueue{client: client}
+}
+
+// Client exposes the underlying Redis client for reuse (e.g., rate limiter).
+func (q *RedisQueue) Client() *redis.Client {
+	return q.client
 }
 
 type queuedJob struct {
@@ -32,17 +28,25 @@ type queuedJob struct {
 	Job job.Job `json:"job"`
 }
 
+// Enqueue pushes a job onto the queue and sets its initial status to QUEUED.
 func (q *RedisQueue) Enqueue(ctx context.Context, id string, j job.Job) error {
 	qj := queuedJob{ID: id, Job: j}
 	bytes, err := json.Marshal(qj)
 	if err != nil {
 		return err
 	}
-	return q.client.LPush(ctx, "job_queue", bytes).Err()
+
+	// Set initial status to QUEUED before pushing to the queue
+	if err := SetStatus(ctx, q.client, id, result.StatusQueued); err != nil {
+		return err
+	}
+
+	return q.client.LPush(ctx, JobQueueKey, bytes).Err()
 }
 
+// Dequeue blocks until a job is available, pops it, and updates status to PROCESSING.
 func (q *RedisQueue) Dequeue(ctx context.Context) (string, job.Job, error) {
-	res, err := q.client.BRPop(ctx, 0, "job_queue").Result()
+	res, err := q.client.BRPop(ctx, 0, JobQueueKey).Result()
 	if err != nil {
 		return "", job.Job{}, err
 	}
@@ -50,25 +54,9 @@ func (q *RedisQueue) Dequeue(ctx context.Context) (string, job.Job, error) {
 	if err := json.Unmarshal([]byte(res[1]), &qj); err != nil {
 		return "", job.Job{}, err
 	}
+
+	// Update status to PROCESSING as soon as a worker picks up the job
+	_ = SetStatus(ctx, q.client, qj.ID, result.StatusProcessing)
+
 	return qj.ID, qj.Job, nil
-}
-
-func (q *RedisQueue) SetResult(ctx context.Context, id string, r result.Result) error {
-	bytes, err := json.Marshal(r)
-	if err != nil {
-		return err
-	}
-	return q.client.Set(ctx, "job_result:"+id, bytes, time.Hour).Err()
-}
-
-func (q *RedisQueue) GetResult(ctx context.Context, id string) (*result.Result, error) {
-	val, err := q.client.Get(ctx, "job_result:"+id).Result()
-	if err != nil {
-		return nil, err
-	}
-	var r result.Result
-	if err := json.Unmarshal([]byte(val), &r); err != nil {
-		return nil, err
-	}
-	return &r, nil
 }
