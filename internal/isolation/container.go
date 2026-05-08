@@ -21,20 +21,13 @@ func (c *Client) createContainer(ctx context.Context, img string) (string, error
 		WorkingDir:      "/app",
 		NetworkDisabled: true,
 		User:            "1000:1000",
-		Env:             []string{"PYTHONDONTWRITEBYTECODE=1"},
 	}
-
 	var pidsLimit int64 = 64
 	hostConfig := &container.HostConfig{
 		Resources: container.Resources{
 			Memory:    memoryLimit,
 			NanoCPUs:  cpuLimit,
 			PidsLimit: &pidsLimit,
-		},
-		ReadonlyRootfs: true,
-		Tmpfs: map[string]string{
-			"/app": "rw,nosuid,nodev,size=64m",
-			"/tmp": "rw,nosuid,nodev,size=64m",
 		},
 		CapDrop:     []string{"ALL"},
 		SecurityOpt: []string{"no-new-privileges:true"},
@@ -74,8 +67,6 @@ func (c *Client) copyCodeToContainer(ctx context.Context, containerID, filename,
 		Name: filename,
 		Mode: 0644,
 		Size: int64(len(code)),
-		Uid:  1000,
-		Gid:  1000,
 	}
 	if err := tw.WriteHeader(hdr); err != nil {
 		return fmt.Errorf("failed to write tar header: %w", err)

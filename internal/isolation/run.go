@@ -46,12 +46,12 @@ func (c *Client) RunBatch(ctx context.Context, img, filename, code, compileCmd, 
 		_ = c.cli.ContainerRemove(context.Background(), containerID, container.RemoveOptions{Force: true})
 	}()
 
-	if err := c.copyCodeToContainer(ctx, containerID, filename, code); err != nil {
-		return nil, err
-	}
-
 	if err := c.cli.ContainerStart(ctx, containerID, container.StartOptions{}); err != nil {
 		return nil, fmt.Errorf("failed to start container: %w", err)
+	}
+
+	if err := c.copyCodeToContainer(ctx, containerID, filename, code); err != nil {
+		return nil, err
 	}
 
 	// Compile step (if needed).
