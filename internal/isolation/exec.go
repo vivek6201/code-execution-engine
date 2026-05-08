@@ -19,6 +19,8 @@ import (
 //     shell timeout doesn't fire.
 //  3. Exit code 137 (SIGKILL) is detected and reported as "timeout".
 func (c *Client) execInContainer(ctx context.Context, containerID, cmdStr, input string, timeout time.Duration) (*ExecuteResult, error) {
+	start := time.Now()
+
 	// Wrap command with shell `timeout` so the OS kills it on time limit.
 	timeoutSecs := int(timeout.Seconds())
 	wrappedCmd := fmt.Sprintf("timeout -s KILL %d %s", timeoutSecs, cmdStr)
@@ -74,5 +76,6 @@ func (c *Client) execInContainer(ctx context.Context, containerID, cmdStr, input
 	return &ExecuteResult{
 		Output: outBuf.String(),
 		Error:  errBuf.String(),
+		TimeMs: time.Since(start).Milliseconds(),
 	}, nil
 }

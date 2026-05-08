@@ -21,6 +21,7 @@ var maxConcurrency = runtime.NumCPU()
 type ExecuteResult struct {
 	Output string
 	Error  string
+	TimeMs int64
 }
 
 // Client wraps the Docker API client for creating and managing sandbox containers.

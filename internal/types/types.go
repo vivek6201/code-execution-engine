@@ -35,6 +35,7 @@ type TestCaseResult struct {
 	ActualOutput   string `json:"actual_output"`
 	Status         Status `json:"status"`
 	Error          string `json:"error,omitempty"`
+	TimeMs         int64  `json:"time_ms"`
 }
 
 // Result holds the overall execution outcome for a job.
@@ -46,4 +47,6 @@ type Result struct {
 	Total      int              `json:"total,omitempty"`
 	Passed     int              `json:"passed,omitempty"`
 	FatalError string           `json:"fatal_error,omitempty"`
+	TimeMs     int64            `json:"time_ms,omitempty"`
+	MemoryKB   int64            `json:"memory_kb,omitempty"`
 }

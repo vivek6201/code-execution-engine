@@ -25,21 +25,25 @@ func (s *Service) Execute(j types.Job) types.Result {
 
 	// Single execution flow (no test cases)
 	if len(j.TestCases) == 0 {
-		res := s.exec.Run(j.Language, j.Code, j.Input)
+		res, memKB := s.exec.Run(j.Language, j.Code, j.Input)
 		if res.Error != "" {
 			status := types.StatusError
 			if res.Error == "timeout" {
 				status = types.StatusTLE
 			}
 			return types.Result{
-				Status: status,
-				Output: res.Output,
-				Error:  res.Error,
+				Status:   status,
+				Output:   res.Output,
+				Error:    res.Error,
+				TimeMs:   res.TimeMs,
+				MemoryKB: memKB,
 			}
 		}
 		return types.Result{
-			Status: types.StatusSuccess,
-			Output: res.Output,
+			Status:   types.StatusSuccess,
+			Output:   res.Output,
+			TimeMs:   res.TimeMs,
+			MemoryKB: memKB,
 		}
 	}
 
@@ -59,11 +63,12 @@ func (s *Service) executeBatch(j types.Job) types.Result {
 	defer cancel()
 
 	// Run all test cases concurrently in a single container
-	batchResults, err := s.exec.RunBatch(ctx, j.Language, j.Code, inputs)
+	batchResults, memKB, err := s.exec.RunBatch(ctx, j.Language, j.Code, inputs)
 
 	finalResult := types.Result{
 		TestCases: make([]types.TestCaseResult, 0, len(j.TestCases)),
 		Total:     len(j.TestCases),
+		MemoryKB:  memKB,
 	}
 
 	if err != nil {
@@ -91,6 +96,7 @@ func (s *Service) executeBatch(j types.Job) types.Result {
 			tcRes := types.TestCaseResult{
 				Input:          tc.Input,
 				ExpectedOutput: tc.ExpectedOutput,
+				TimeMs:         res.TimeMs,
 			}
 
 			if res.Error == "cancelled" {
@@ -131,8 +137,14 @@ func (s *Service) executeBatch(j types.Job) types.Result {
 
 	wg.Wait()
 
+	var totalTime int64
+	for _, tr := range tcResults {
+		totalTime += tr.TimeMs
+	}
+
 	finalResult.TestCases = tcResults
 	finalResult.Passed = passed
+	finalResult.TimeMs = totalTime
 
 	if !failed && passed == finalResult.Total {
 		finalResult.Status = types.StatusSuccess

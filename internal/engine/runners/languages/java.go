@@ -22,22 +22,22 @@ func NewJavaRunner(client *isolation.Client) *JavaRunner {
 	return &JavaRunner{client: client}
 }
 
-func (r *JavaRunner) Run(ctx context.Context, req *runners.ExecuteRequest) (*runners.ExecuteResult, error) {
-	res, err := r.client.Run(ctx, javaImage, javaFilename, req.Code, javaCompileCmd+" && "+javaRunCmd, req.Input)
+func (r *JavaRunner) Run(ctx context.Context, req *runners.ExecuteRequest) (*runners.ExecuteResult, int64, error) {
+	res, memKB, err := r.client.Run(ctx, javaImage, javaFilename, req.Code, javaCompileCmd+" && "+javaRunCmd, req.Input)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return &runners.ExecuteResult{Output: res.Output, Error: res.Error}, nil
+	return &runners.ExecuteResult{Output: res.Output, Error: res.Error, TimeMs: res.TimeMs}, memKB, nil
 }
 
-func (r *JavaRunner) RunBatch(ctx context.Context, req *runners.BatchRequest) ([]runners.ExecuteResult, error) {
-	results, err := r.client.RunBatch(ctx, javaImage, javaFilename, req.Code, javaCompileCmd, javaRunCmd, req.Inputs)
+func (r *JavaRunner) RunBatch(ctx context.Context, req *runners.BatchRequest) ([]runners.ExecuteResult, int64, error) {
+	results, memKB, err := r.client.RunBatch(ctx, javaImage, javaFilename, req.Code, javaCompileCmd, javaRunCmd, req.Inputs)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	out := make([]runners.ExecuteResult, len(results))
 	for i, res := range results {
-		out[i] = runners.ExecuteResult{Output: res.Output, Error: res.Error}
+		out[i] = runners.ExecuteResult{Output: res.Output, Error: res.Error, TimeMs: res.TimeMs}
 	}
-	return out, nil
+	return out, memKB, nil
 }
