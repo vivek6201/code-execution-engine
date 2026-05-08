@@ -19,7 +19,7 @@ type CreateJobRequest struct {
 // Validate checks that the language is supported.
 func (r *CreateJobRequest) Validate() error {
 	switch r.Language {
-	case "cpp", "python", "java", "javascript", "go":
+	case "cpp", "python", "java", "javascript":
 		return nil
 	default:
 		return errors.New("invalid language")
