@@ -1,6 +1,18 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: judge
+      POSTGRES_PASSWORD: judge_secret
+      POSTGRES_DB: judge_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     ports:
@@ -15,8 +27,11 @@ services:
       - "8080:8080"
     environment:
       - REDIS_URL=redis://redis:6379/0
+      - DB_URL=postgres://judge:judge_secret@postgres:5432/judge_db?sslmode=disable
+      - JWT_SECRET=change-me-to-a-secure-random-string
     depends_on:
       - redis
+      - postgres
     restart: unless-stopped
 
   worker:
@@ -32,3 +47,6 @@ services:
     deploy:
       replicas: 3
     restart: unless-stopped
+
+volumes:
+  pgdata:

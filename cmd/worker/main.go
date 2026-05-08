@@ -1,6 +1,6 @@
 package main
 
-import "github.com/code-execution-engine/internals/app"
+import "github.com/code-execution-engine/internal/app"
 
 func main() {
 	app.StartWorker()
