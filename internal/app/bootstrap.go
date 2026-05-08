@@ -29,8 +29,8 @@ func StartServer() {
 	authService := auth.NewService(authRepo, cfg.JWTSecret)
 	authHandler := auth.NewHandler(authService)
 
-	// Judge module
-	judgeHandler := judge.NewHandler(q, redisClient)
+	judgeRepo := judge.NewRepository(database)
+	judgeHandler := judge.NewHandler(q, redisClient, judgeRepo)
 
 	// Gin setup
 	r := gin.Default()

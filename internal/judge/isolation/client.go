@@ -1,7 +1,6 @@
 package isolation
 
 import (
-	"runtime"
 	"time"
 
 	"github.com/docker/docker/client"
@@ -14,8 +13,10 @@ const (
 	runTimeout  = 5 * time.Second   // Per-test-case execution timeout
 )
 
-// maxConcurrency caps parallel test case executions to the number of available CPUs.
-var maxConcurrency = runtime.NumCPU()
+// maxConcurrency caps parallel test case executions inside a single container.
+// We set this to a small fixed number (e.g., 2) so that we don't overwhelm
+// the container's 256MB memory and PID limits when evaluating large batches.
+var maxConcurrency = 3
 
 // ExecuteResult holds the stdout and stderr output from a single code execution.
 type ExecuteResult struct {

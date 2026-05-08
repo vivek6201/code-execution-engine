@@ -22,7 +22,7 @@ func (c *Client) createContainer(ctx context.Context, img string) (string, error
 		NetworkDisabled: true,
 		User:            "1000:1000",
 	}
-	var pidsLimit int64 = 64
+	var pidsLimit int64 = 512
 	hostConfig := &container.HostConfig{
 		Resources: container.Resources{
 			Memory:    memoryLimit,

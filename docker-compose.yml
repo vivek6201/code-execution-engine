@@ -40,10 +40,12 @@ services:
       dockerfile: docker/Dockerfile.worker
     environment:
       - REDIS_URL=redis://redis:6379/0
+      - DB_URL=postgres://judge:judge_secret@postgres:5432/judge_db?sslmode=disable
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - redis
+      - postgres
     deploy:
       replicas: 3
     restart: unless-stopped

@@ -3,9 +3,10 @@ package judge
 import (
 	"net/http"
 
+	"github.com/code-execution-engine/internal/auth"
+	"github.com/code-execution-engine/internal/queue"
 	"github.com/code-execution-engine/internal/server/utility"
 	"github.com/code-execution-engine/internal/types"
-	"github.com/code-execution-engine/internal/queue"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -15,13 +16,15 @@ import (
 type Handler struct {
 	queue       *queue.RedisQueue
 	redisClient *redis.Client
+	repo        *Repository
 }
 
 // NewHandler creates a new judge HTTP handler.
-func NewHandler(q *queue.RedisQueue, redisClient *redis.Client) *Handler {
+func NewHandler(q *queue.RedisQueue, redisClient *redis.Client, repo *Repository) *Handler {
 	return &Handler{
 		queue:       q,
 		redisClient: redisClient,
+		repo:        repo,
 	}
 }
 
@@ -51,35 +54,93 @@ func (h *Handler) RunCode(c *gin.Context) {
 		})
 	}
 
-	jobID := uuid.New().String()
+	jobID := uuid.New()
 
-	if err := h.queue.Enqueue(c.Request.Context(), jobID, j); err != nil {
+	userID := c.MustGet("user_id").(uuid.UUID)
+	apiKey := c.MustGet("api_key").(*auth.APIKey)
+
+	jobRecord := JobRecord{
+		ID:        jobID,
+		UserID:    userID,
+		APIKeyID:  apiKey.ID,
+		Language:  req.Language,
+		Code:      req.Code,
+		Status:    types.StatusQueued,
+		Total:     len(req.TestCases),
+	}
+	if err := h.repo.CreateJob(&jobRecord); err != nil {
+		utility.ErrorResponse(c, http.StatusInternalServerError, "Failed to create job record", err.Error())
+		return
+	}
+
+	if err := h.queue.Enqueue(c.Request.Context(), jobID.String(), j); err != nil {
+		// Try to mark job as failed in DB
+		_ = h.repo.UpdateJobResult(jobID, UpdateJobDTO{
+			Status:     types.StatusError,
+			FatalError: "failed to enqueue",
+		})
 		utility.ErrorResponse(c, http.StatusInternalServerError, "Failed to enqueue job", err.Error())
 		return
 	}
 
 	utility.SuccessResponse(c, http.StatusAccepted, "Job queued successfully", gin.H{
-		"job_id": jobID,
+		"job_id": jobID.String(),
 	})
 }
 
 // GetResult handles GET /api/v1/run/:id
 func (h *Handler) GetResult(c *gin.Context) {
-	jobID := c.Param("id")
-	res, err := queue.GetResult(c.Request.Context(), h.redisClient, jobID)
+	jobIDStr := c.Param("id")
+	jobUUID, err := uuid.Parse(jobIDStr)
 	if err != nil {
+		utility.ErrorResponse(c, http.StatusBadRequest, "Invalid job ID format", err.Error())
+		return
+	}
+
+	// 1. First try Redis for fast live polling
+	res, err := queue.GetResult(c.Request.Context(), h.redisClient, jobIDStr)
+	if err == nil {
+		// Determine message based on status
+		msg := "Result fetched successfully"
+		switch res.Status {
+		case "QUEUED":
+			msg = "Job is queued for processing"
+		case "PROCESSING":
+			msg = "Job is being processed"
+		}
+		utility.SuccessResponse(c, http.StatusOK, msg, res)
+		return
+	}
+
+	// 2. If Redis expired or doesn't have it, fetch from Postgres
+	jobRecord, err := h.repo.GetJobByID(jobUUID)
+	if err != nil || jobRecord == nil {
 		utility.ErrorResponse(c, http.StatusNotFound, "Job not found", "no job found with the given ID")
 		return
 	}
 
-	// Determine message based on status
-	msg := "Result fetched successfully"
-	switch res.Status {
-	case "QUEUED":
+	result := types.Result{
+		Status:     jobRecord.Status,
+		Output:     jobRecord.Output,
+		Error:      jobRecord.Error,
+		FatalError: jobRecord.FatalError,
+		TimeMs:     jobRecord.TimeMs,
+		MemoryKB:   jobRecord.MemoryKB,
+		Total:      jobRecord.Total,
+		Passed:     jobRecord.Passed,
+		TestCases:  jobRecord.TestCases,
+	}
+
+	msg := "Result fetched successfully from database"
+	switch result.Status {
+	case types.StatusQueued:
 		msg = "Job is queued for processing"
-	case "PROCESSING":
+	case types.StatusProcessing:
 		msg = "Job is being processed"
 	}
 
-	utility.SuccessResponse(c, http.StatusOK, msg, res)
+	// Cache back to Redis for faster retrieval next time
+	_ = queue.SetResult(c.Request.Context(), h.redisClient, jobIDStr, result)
+
+	utility.SuccessResponse(c, http.StatusOK, msg, result)
 }

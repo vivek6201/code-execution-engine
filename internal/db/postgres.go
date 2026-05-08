@@ -1,8 +1,9 @@
 package db
 
 import (
-	"github.com/code-execution-engine/internal/telemetry"
 	"github.com/code-execution-engine/internal/auth"
+	"github.com/code-execution-engine/internal/judge"
+	"github.com/code-execution-engine/internal/telemetry"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -16,7 +17,7 @@ func ConnectDB(dbUrl string) *gorm.DB {
 	}
 
 	// Auto-migrate all models
-	if err := db.AutoMigrate(&auth.User{}, &auth.APIKey{}); err != nil {
+	if err := db.AutoMigrate(&auth.User{}, &auth.APIKey{}, &judge.JobRecord{}); err != nil {
 		telemetry.Error("Failed to run auto-migration", "error", err)
 		panic("database migration failed")
 	}
