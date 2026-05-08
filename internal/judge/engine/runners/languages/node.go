@@ -3,8 +3,8 @@ package languages
 import (
 	"context"
 
-	"github.com/code-execution-engine/internal/engine/runners"
-	"github.com/code-execution-engine/internal/isolation"
+	"github.com/code-execution-engine/internal/judge/engine/runners"
+	"github.com/code-execution-engine/internal/judge/isolation"
 )
 
 const (

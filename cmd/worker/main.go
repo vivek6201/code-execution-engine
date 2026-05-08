@@ -1,7 +1,7 @@
 package main
 
-import "github.com/code-execution-engine/internal/app"
+import "github.com/code-execution-engine/internal/worker"
 
 func main() {
-	app.StartWorker()
+	worker.StartWorker()
 }

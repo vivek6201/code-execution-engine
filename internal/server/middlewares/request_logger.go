@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/code-execution-engine/internal/logger"
+	"github.com/code-execution-engine/internal/telemetry"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -48,11 +48,11 @@ func RequestLogger() gin.HandlerFunc {
 
 		switch {
 		case status >= 500:
-			logger.Error("Server error", attrs...)
+			telemetry.Error("Server error", attrs...)
 		case status >= 400:
-			logger.Warn("Client error", attrs...)
+			telemetry.Warn("Client error", attrs...)
 		default:
-			logger.Info("Request completed", attrs...)
+			telemetry.Info("Request completed", attrs...)
 		}
 	}
 }

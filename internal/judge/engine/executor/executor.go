@@ -3,7 +3,7 @@ package executor
 import (
 	"context"
 
-	"github.com/code-execution-engine/internal/engine/runners"
+	"github.com/code-execution-engine/internal/judge/engine/runners"
 )
 
 type Executor struct {

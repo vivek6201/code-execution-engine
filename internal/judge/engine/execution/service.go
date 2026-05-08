@@ -4,9 +4,9 @@ import (
 	"context"
 	"sync"
 
-	"github.com/code-execution-engine/internal/engine/evaluator"
+	"github.com/code-execution-engine/internal/judge/engine/evaluator"
 	"github.com/code-execution-engine/internal/types"
-	"github.com/code-execution-engine/internal/engine/executor"
+	"github.com/code-execution-engine/internal/judge/engine/executor"
 )
 
 type Service struct {

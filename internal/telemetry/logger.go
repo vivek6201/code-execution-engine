@@ -1,6 +1,4 @@
-// Package logger provides a centralized, structured logger built on log/slog.
-// Call Init() once at startup; then use logger.Info/Warn/Error/Debug everywhere.
-package logger
+package telemetry
 
 import (
 	"log/slog"
@@ -27,7 +25,7 @@ func Init() {
 	})
 }
 
-// Convenience wrappers so callers can write logger.Info(...) instead of
+// Convenience wrappers so callers can write telemetry.Info(...) instead of
 // logger.Log.Info(...)
 
 func Info(msg string, args ...any)  { Log.Info(msg, args...) }
