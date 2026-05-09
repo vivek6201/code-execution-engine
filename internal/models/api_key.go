@@ -1,22 +1,10 @@
-package auth
+package models
 
 import (
 	"time"
 
 	"github.com/google/uuid"
 )
-
-// User represents a registered user in the system.
-type User struct {
-	ID           uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	Email        string    `gorm:"uniqueIndex;not null"`
-	PasswordHash string    `gorm:"not null"`
-	Name         string
-	Plan         PlanType `gorm:"type:varchar(20);default:'basic'"`
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	APIKeys      []APIKey
-}
 
 // APIKey represents an API key issued to a user for authenticating judge API requests.
 // Only the SHA-256 hash of the raw key is stored; the raw key is shown once at creation.

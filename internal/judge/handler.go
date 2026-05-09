@@ -3,8 +3,8 @@ package judge
 import (
 	"net/http"
 
-	"github.com/code-execution-engine/internal/auth"
-	"github.com/code-execution-engine/internal/queue"
+	"github.com/code-execution-engine/internal/models"
+	"github.com/code-execution-engine/pkg/queue"
 	"github.com/code-execution-engine/internal/server/utility"
 	"github.com/code-execution-engine/internal/types"
 	"github.com/gin-gonic/gin"
@@ -57,7 +57,7 @@ func (h *Handler) RunCode(c *gin.Context) {
 	jobID := uuid.New()
 
 	userID := c.MustGet("user_id").(uuid.UUID)
-	apiKey := c.MustGet("api_key").(*auth.APIKey)
+	apiKey := c.MustGet("api_key").(*models.APIKey)
 
 	jobRecord := JobRecord{
 		ID:        jobID,

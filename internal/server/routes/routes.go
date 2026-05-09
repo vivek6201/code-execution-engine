@@ -2,6 +2,7 @@ package routes
 
 import (
 	"github.com/code-execution-engine/internal/auth"
+	"github.com/code-execution-engine/internal/dashboard"
 	"github.com/code-execution-engine/internal/judge"
 	"github.com/code-execution-engine/internal/server/middlewares"
 	"github.com/gin-gonic/gin"
@@ -12,6 +13,7 @@ import (
 type Dependencies struct {
 	AuthHandler  *auth.Handler
 	AuthService  *auth.Service
+	DashHandler  *dashboard.Handler
 	JudgeHandler *judge.Handler
 	RedisClient  *redis.Client
 }
@@ -30,11 +32,11 @@ func SetupRoutes(r *gin.Engine, deps *Dependencies) {
 	dash := apiv1.Group("/dashboard")
 	dash.Use(middlewares.JWTAuth(deps.AuthService))
 	{
-		dash.GET("/me", deps.AuthHandler.GetMe)
-		dash.PATCH("/plan", deps.AuthHandler.UpdatePlan)
-		dash.POST("/keys", deps.AuthHandler.CreateKey)
-		dash.GET("/keys", deps.AuthHandler.ListKeys)
-		dash.DELETE("/keys/:id", deps.AuthHandler.RevokeKey)
+		dash.GET("/me", deps.DashHandler.GetMe)
+		dash.PATCH("/plan", deps.DashHandler.UpdatePlan)
+		dash.POST("/keys", deps.DashHandler.CreateKey)
+		dash.GET("/keys", deps.DashHandler.ListKeys)
+		dash.DELETE("/keys/:id", deps.DashHandler.RevokeKey)
 	}
 
 	// Judge API routes (API key auth + rate limiting)

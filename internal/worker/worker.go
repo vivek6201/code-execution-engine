@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/code-execution-engine/config"
-	"github.com/code-execution-engine/internal/cache"
-	"github.com/code-execution-engine/internal/db"
+	"github.com/code-execution-engine/pkg/cache"
+	"github.com/code-execution-engine/pkg/db"
 	"github.com/code-execution-engine/internal/judge"
 	"github.com/code-execution-engine/internal/judge/engine/evaluator"
 	"github.com/code-execution-engine/internal/judge/engine/execution"
@@ -13,8 +13,8 @@ import (
 	"github.com/code-execution-engine/internal/judge/engine/runners"
 	"github.com/code-execution-engine/internal/judge/engine/runners/languages"
 	"github.com/code-execution-engine/internal/judge/isolation"
-	"github.com/code-execution-engine/internal/queue"
-	"github.com/code-execution-engine/internal/telemetry"
+	"github.com/code-execution-engine/pkg/queue"
+	"github.com/code-execution-engine/pkg/telemetry"
 	"github.com/code-execution-engine/internal/types"
 	"github.com/google/uuid"
 )

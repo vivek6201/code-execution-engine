@@ -3,13 +3,14 @@ package app
 import (
 	"github.com/code-execution-engine/config"
 	"github.com/code-execution-engine/internal/auth"
-	"github.com/code-execution-engine/internal/cache"
-	"github.com/code-execution-engine/internal/db"
+	"github.com/code-execution-engine/internal/dashboard"
 	"github.com/code-execution-engine/internal/judge"
-	"github.com/code-execution-engine/internal/queue"
 	"github.com/code-execution-engine/internal/server/middlewares"
 	"github.com/code-execution-engine/internal/server/routes"
-	"github.com/code-execution-engine/internal/telemetry"
+	"github.com/code-execution-engine/pkg/cache"
+	"github.com/code-execution-engine/pkg/db"
+	"github.com/code-execution-engine/pkg/queue"
+	"github.com/code-execution-engine/pkg/telemetry"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
@@ -29,6 +30,11 @@ func StartServer() {
 	authService := auth.NewService(authRepo, cfg.JWTSecret)
 	authHandler := auth.NewHandler(authService)
 
+	// Dashboard module
+	dashRepo := dashboard.NewRepository(database)
+	dashService := dashboard.NewService(dashRepo)
+	dashHandler := dashboard.NewHandler(dashService)
+
 	judgeRepo := judge.NewRepository(database)
 	judgeHandler := judge.NewHandler(q, redisClient, judgeRepo)
 
@@ -40,6 +46,7 @@ func StartServer() {
 	routes.SetupRoutes(r, &routes.Dependencies{
 		AuthHandler:  authHandler,
 		AuthService:  authService,
+		DashHandler:  dashHandler,
 		JudgeHandler: judgeHandler,
 		RedisClient:  redisClient,
 	})

@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/code-execution-engine/internal/models"
 	"github.com/code-execution-engine/internal/server/utility"
-	"github.com/code-execution-engine/internal/auth"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -28,14 +28,14 @@ func RateLimiter(redisClient *redis.Client) gin.HandlerFunc {
 		}
 
 		plan, _ := c.Get("plan")
-		planType, ok := plan.(auth.PlanType)
+		planType, ok := plan.(models.PlanType)
 		if !ok {
-			planType = auth.PlanBasic
+			planType = models.PlanBasic
 		}
 
-		limits, exists := auth.Plans[planType]
+		limits, exists := models.Plans[planType]
 		if !exists {
-			limits = auth.Plans[auth.PlanBasic]
+			limits = models.Plans[models.PlanBasic]
 		}
 
 		// Build a daily rate limit key: ratelimit:{user_id}:{YYYY-MM-DD}

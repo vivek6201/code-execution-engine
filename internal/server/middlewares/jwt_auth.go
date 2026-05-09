@@ -10,8 +10,8 @@ import (
 )
 
 // JWTAuth returns a Gin middleware that validates the Authorization: Bearer <token>
-// header for dashboard routes. On success it sets "user_id" and "email" in
-// the Gin context.
+// JWTAuth middleware verifies the JWT token and extracts the user ID.
+// It skips DB lookup for every request by relying on the stateless JWT payload.
 func JWTAuth(authService *auth.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		header := c.GetHeader("Authorization")

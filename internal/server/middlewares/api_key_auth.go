@@ -4,8 +4,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/code-execution-engine/internal/server/utility"
 	"github.com/code-execution-engine/internal/auth"
+	"github.com/code-execution-engine/internal/models"
+	"github.com/code-execution-engine/internal/server/utility"
 	"github.com/gin-gonic/gin"
 )
 
@@ -39,7 +40,7 @@ func APIKeyAuth(authService *auth.Service) gin.HandlerFunc {
 		c.Set("user", user)
 		c.Set("user_id", user.ID)
 		c.Set("api_key", apiKey)
-		c.Set("plan", user.Plan)
+		c.Set("plan_limits", models.Plans[user.Plan])
 
 		c.Next()
 	}

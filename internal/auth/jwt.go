@@ -10,6 +10,13 @@ import (
 
 const tokenExpiry = 24 * time.Hour
 
+// JWTClaims is the payload embedded in dashboard session tokens.
+type JWTClaims struct {
+	UserID uuid.UUID `json:"user_id"`
+	Email  string    `json:"email"`
+	jwt.RegisteredClaims
+}
+
 // GenerateToken creates a signed JWT for dashboard sessions.
 func GenerateToken(userID uuid.UUID, email, secret string) (string, error) {
 	claims := JWTClaims{

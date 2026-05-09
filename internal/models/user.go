@@ -1,9 +1,8 @@
-// Package auth implements user authentication, API key management,
-// and subscription plan enforcement for the code execution engine.
-package auth
+package models
 
 import (
-	"github.com/golang-jwt/jwt/v5"
+	"time"
+
 	"github.com/google/uuid"
 )
 
@@ -38,9 +37,14 @@ var Plans = map[PlanType]PlanLimits{
 	PlanUltimate: {RequestsPerDay: 10000, MaxConcurrent: 50},
 }
 
-// JWTClaims is the payload embedded in dashboard session tokens.
-type JWTClaims struct {
-	UserID uuid.UUID `json:"user_id"`
-	Email  string    `json:"email"`
-	jwt.RegisteredClaims
+// User represents a registered user in the system.
+type User struct {
+	ID           uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	Email        string    `gorm:"uniqueIndex;not null"`
+	PasswordHash string    `gorm:"not null"`
+	Name         string
+	Plan         PlanType `gorm:"type:varchar(20);default:'basic'"`
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	APIKeys      []APIKey
 }

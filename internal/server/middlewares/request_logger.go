@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/code-execution-engine/internal/telemetry"
+	"github.com/code-execution-engine/pkg/telemetry"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
