@@ -25,7 +25,7 @@ func (s *Service) Execute(j types.Job) types.Result {
 
 	// Single execution flow (no test cases)
 	if len(j.TestCases) == 0 {
-		res, memKB := s.exec.Run(j.Language, j.Code, j.Input)
+		res, memKB := s.exec.Run(j.Language, j.Code, j.Input, j.TimeLimitMS, j.MemoryLimitKB)
 		if res.Error != "" {
 			status := types.StatusError
 			if res.Error == "timeout" {
@@ -63,7 +63,7 @@ func (s *Service) executeBatch(j types.Job) types.Result {
 	defer cancel()
 
 	// Run all test cases concurrently in a single container
-	batchResults, memKB, err := s.exec.RunBatch(ctx, j.Language, j.Code, inputs)
+	batchResults, memKB, err := s.exec.RunBatch(ctx, j.Language, j.Code, inputs, j.TimeLimitMS, j.MemoryLimitKB)
 
 	finalResult := types.Result{
 		TestCases: make([]types.TestCaseResult, 0, len(j.TestCases)),

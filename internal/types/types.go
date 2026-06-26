@@ -10,10 +10,12 @@ type TestCase struct {
 
 // Job represents a code execution request.
 type Job struct {
-	Code      string
-	Language  string
-	Input     string
-	TestCases []TestCase
+	Code          string
+	Language      string
+	Input         string
+	TestCases     []TestCase
+	TimeLimitMS   int64
+	MemoryLimitKB int64
 }
 
 // Status represents the lifecycle state of a job or test case.

@@ -26,15 +26,17 @@ func ValidPlan(p PlanType) bool {
 
 // PlanLimits defines the rate-limiting constraints for a subscription tier.
 type PlanLimits struct {
-	RequestsPerDay int
-	MaxConcurrent  int
+	RequestsPerDay   int
+	MaxConcurrent    int
+	MaxTimeLimitMS   int64
+	MaxMemoryLimitKB int64
 }
 
 // Plans maps each subscription tier to its limits.
 var Plans = map[PlanType]PlanLimits{
-	PlanBasic:    {RequestsPerDay: 100, MaxConcurrent: 2},
-	PlanPro:      {RequestsPerDay: 1000, MaxConcurrent: 10},
-	PlanUltimate: {RequestsPerDay: 10000, MaxConcurrent: 50},
+	PlanBasic:    {RequestsPerDay: 100, MaxConcurrent: 2, MaxTimeLimitMS: 2000, MaxMemoryLimitKB: 128000},
+	PlanPro:      {RequestsPerDay: 1000, MaxConcurrent: 10, MaxTimeLimitMS: 5000, MaxMemoryLimitKB: 512000},
+	PlanUltimate: {RequestsPerDay: 10000, MaxConcurrent: 50, MaxTimeLimitMS: 10000, MaxMemoryLimitKB: 1024000},
 }
 
 // User represents a registered user in the system.

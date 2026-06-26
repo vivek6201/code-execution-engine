@@ -42,11 +42,27 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.service.Login(req)
+	resp, err := h.service.Login(c.Request.Context(), req)
 	if err != nil {
 		utility.ErrorResponse(c, http.StatusUnauthorized, "Login failed", err.Error())
 		return
 	}
 
+	// Set session cookie
+	// Name, value, maxAge (seconds), path, domain, secure, httpOnly
+	c.SetCookie("session_id", resp.SessionID, 86400, "/", "", false, true)
+
 	utility.SuccessResponse(c, http.StatusOK, "Login successful", resp)
+}
+
+// Logout handles POST /api/v1/dashboard/logout
+func (h *Handler) Logout(c *gin.Context) {
+	sessionID := c.MustGet("session_id").(string)
+
+	_ = h.service.DeleteSession(c.Request.Context(), sessionID)
+
+	// Clear session cookie
+	c.SetCookie("session_id", "", -1, "/", "", false, true)
+
+	utility.SuccessResponse(c, http.StatusOK, "Logged out successfully", nil)
 }

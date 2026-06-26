@@ -8,10 +8,11 @@ import (
 )
 
 const (
-	cppImage      = "gcc:latest"
-	cppFilename   = "main.cpp"
-	cppCompileCmd = "g++ main.cpp -o main"
-	cppRunCmd     = "./main"
+	cppCompilerImage = "gcc:latest"
+	cppRuntimeImage  = "debian:stable-slim"
+	cppFilename      = "main.cpp"
+	cppCompileCmd    = "g++ main.cpp -o main"
+	cppRunCmd        = "./main"
 )
 
 type CppRunner struct {
@@ -23,7 +24,7 @@ func NewCppRunner(client *isolation.Client) *CppRunner {
 }
 
 func (r *CppRunner) Run(ctx context.Context, req *runners.ExecuteRequest) (*runners.ExecuteResult, int64, error) {
-	res, memKB, err := r.client.Run(ctx, cppImage, cppFilename, req.Code, cppCompileCmd+" && "+cppRunCmd, req.Input)
+	res, memKB, err := r.client.Run(ctx, cppCompilerImage, cppRuntimeImage, cppFilename, req.Code, cppCompileCmd, cppRunCmd, []string{"main"}, req.Input, req.MemoryLimitKB*1024, req.TimeLimitMS)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -31,7 +32,7 @@ func (r *CppRunner) Run(ctx context.Context, req *runners.ExecuteRequest) (*runn
 }
 
 func (r *CppRunner) RunBatch(ctx context.Context, req *runners.BatchRequest) ([]runners.ExecuteResult, int64, error) {
-	results, memKB, err := r.client.RunBatch(ctx, cppImage, cppFilename, req.Code, cppCompileCmd, cppRunCmd, req.Inputs)
+	results, memKB, err := r.client.RunBatch(ctx, cppCompilerImage, cppRuntimeImage, cppFilename, req.Code, cppCompileCmd, cppRunCmd, []string{"main"}, req.Inputs, req.MemoryLimitKB*1024, req.TimeLimitMS)
 	if err != nil {
 		return nil, 0, err
 	}

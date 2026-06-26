@@ -32,8 +32,8 @@ type UserResponse struct {
 
 // LoginResponse is returned after a successful login.
 type LoginResponse struct {
-	Token string       `json:"token"`
-	User  UserResponse `json:"user"`
+	SessionID string       `json:"session_id"`
+	User      UserResponse `json:"user"`
 }
 
 // ToUserResponse converts a User model to its public representation.

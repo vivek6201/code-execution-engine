@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: judge
+      POSTGRES_PASSWORD: judge_secret
+      POSTGRES_DB: judge_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U judge -d judge_db"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  migrations:
+    image: arigaio/atlas:latest
+    volumes:
+      - ./migrations:/migrations
+    command: migrate apply --url "postgres://judge:judge_secret@postgres:5432/judge_db?sslmode=disable" --dir "file://migrations"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    image: golang:1.26-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    command: sh -c "go install github.com/air-verse/air@latest && air"
+    depends_on:
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  worker:
+    image: golang:1.26-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+    env_file:
+      - .env
+    command: sh -c "go install github.com/air-verse/air@latest && air -c .air.worker.toml"
+    depends_on:
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  pgdata_dev:

@@ -23,11 +23,11 @@ func StartServer() {
 	// Infrastructure
 	database := db.ConnectDB(cfg.DbUrl)
 	redisClient := cache.NewRedisClient(cfg.RedisUrl)
-	q := queue.NewRedisQueue(redisClient)
+	q := queue.NewRedisQueue(redisClient, cfg.RedisUrl)
 
 	// Auth module
 	authRepo := auth.NewRepository(database)
-	authService := auth.NewService(authRepo, cfg.JWTSecret)
+	authService := auth.NewService(authRepo, redisClient)
 	authHandler := auth.NewHandler(authService)
 
 	// Dashboard module
@@ -40,7 +40,14 @@ func StartServer() {
 
 	// Gin setup
 	r := gin.Default()
-	r.Use(cors.Default())
+	
+	corsConfig := cors.DefaultConfig()
+	corsConfig.AllowOrigins = []string{"http://localhost:5173", "http://localhost:3000", "http://localhost:8080"}
+	corsConfig.AllowCredentials = true
+	corsConfig.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization", "X-API-Key", "X-Session-ID"}
+	corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
+	r.Use(cors.New(corsConfig))
+
 	r.Use(middlewares.RequestLogger())
 
 	routes.SetupRoutes(r, &routes.Dependencies{

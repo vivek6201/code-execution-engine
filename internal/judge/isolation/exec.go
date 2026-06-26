@@ -30,7 +30,7 @@ func (c *Client) execInContainer(ctx context.Context, containerID, cmdStr, input
 		AttachStdin:  true,
 		AttachStdout: true,
 		AttachStderr: true,
-		WorkingDir:   "/app",
+		WorkingDir:   "/tmp",
 	}
 
 	execResp, err := c.cli.ContainerExecCreate(ctx, containerID, execConfig)

@@ -23,7 +23,7 @@ func NewNodeRunner(client *isolation.Client) *NodeRunner {
 }
 
 func (r *NodeRunner) Run(ctx context.Context, req *runners.ExecuteRequest) (*runners.ExecuteResult, int64, error) {
-	res, memKB, err := r.client.Run(ctx, image, filename, req.Code, runCmd, req.Input)
+	res, memKB, err := r.client.Run(ctx, "", image, filename, req.Code, compileCmd, runCmd, nil, req.Input, req.MemoryLimitKB*1024, req.TimeLimitMS)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -31,7 +31,7 @@ func (r *NodeRunner) Run(ctx context.Context, req *runners.ExecuteRequest) (*run
 }
 
 func (r *NodeRunner) RunBatch(ctx context.Context, req *runners.BatchRequest) ([]runners.ExecuteResult, int64, error) {
-	results, memKB, err := r.client.RunBatch(ctx, image, filename, req.Code, compileCmd, runCmd, req.Inputs)
+	results, memKB, err := r.client.RunBatch(ctx, "", image, filename, req.Code, compileCmd, runCmd, nil, req.Inputs, req.MemoryLimitKB*1024, req.TimeLimitMS)
 	if err != nil {
 		return nil, 0, err
 	}

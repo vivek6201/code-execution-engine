@@ -3,13 +3,17 @@ package runners
 import "context"
 
 type ExecuteRequest struct {
-	Code  string
-	Input string
+	Code          string
+	Input         string
+	TimeLimitMS   int64
+	MemoryLimitKB int64
 }
 
 type BatchRequest struct {
-	Code   string
-	Inputs []string
+	Code          string
+	Inputs        []string
+	TimeLimitMS   int64
+	MemoryLimitKB int64
 }
 
 type ExecuteResult struct {

@@ -14,18 +14,22 @@ import (
 
 // createContainer creates a long-lived sandbox container with resource limits.
 // The container runs `sleep infinity` to stay alive for multiple exec calls.
-func (c *Client) createContainer(ctx context.Context, img string) (string, error) {
+func (c *Client) createContainer(ctx context.Context, img string, memLimitBytes int64) (string, error) {
 	config := &container.Config{
 		Image:           img,
 		Cmd:             []string{"sleep", "infinity"},
-		WorkingDir:      "/app",
+		WorkingDir:      "/tmp",
 		NetworkDisabled: true,
 		User:            "1000:1000",
+	}
+	var limit int64 = memoryLimit
+	if memLimitBytes > 0 {
+		limit = memLimitBytes
 	}
 	var pidsLimit int64 = 512
 	hostConfig := &container.HostConfig{
 		Resources: container.Resources{
-			Memory:    memoryLimit,
+			Memory:    limit,
 			NanoCPUs:  cpuLimit,
 			PidsLimit: &pidsLimit,
 		},
@@ -59,7 +63,7 @@ func (c *Client) ensureImage(ctx context.Context, img string) error {
 }
 
 // copyCodeToContainer creates an in-memory tar archive with the code file
-// and copies it into the container's /app directory.
+// and copies it into the container's /tmp directory.
 func (c *Client) copyCodeToContainer(ctx context.Context, containerID, filename, code string) error {
 	var tarBuf bytes.Buffer
 	tw := tar.NewWriter(&tarBuf)
@@ -77,5 +81,20 @@ func (c *Client) copyCodeToContainer(ctx context.Context, containerID, filename,
 	if err := tw.Close(); err != nil {
 		return fmt.Errorf("failed to close tar writer: %w", err)
 	}
-	return c.cli.CopyToContainer(ctx, containerID, "/app", &tarBuf, container.CopyToContainerOptions{})
+	return c.cli.CopyToContainer(ctx, containerID, "/tmp", &tarBuf, container.CopyToContainerOptions{})
 }
+
+// copyFromContainer retrieves a file or directory from the container as a tar archive stream.
+func (c *Client) copyFromContainer(ctx context.Context, containerID, srcPath string) (io.ReadCloser, error) {
+	reader, _, err := c.cli.CopyFromContainer(ctx, containerID, srcPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to copy file from container: %w", err)
+	}
+	return reader, nil
+}
+
+// copyArchiveToContainer copies a tar archive reader stream into a target path in the container.
+func (c *Client) copyArchiveToContainer(ctx context.Context, containerID, dstPath string, content io.Reader) error {
+	return c.cli.CopyToContainer(ctx, containerID, dstPath, content, container.CopyToContainerOptions{})
+}
+

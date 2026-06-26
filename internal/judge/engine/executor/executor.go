@@ -16,7 +16,7 @@ func NewExecutor(factory *runners.Factory) *Executor {
 	}
 }
 
-func (e *Executor) Run(language, code, input string) (runners.ExecuteResult, int64) {
+func (e *Executor) Run(language, code, input string, timeLimitMS int64, memoryLimitKB int64) (runners.ExecuteResult, int64) {
 	r, err := e.factory.GetRunner(language)
 
 	if err != nil {
@@ -28,8 +28,10 @@ func (e *Executor) Run(language, code, input string) (runners.ExecuteResult, int
 	ctx := context.Background()
 
 	res, memKB, err := r.Run(ctx, &runners.ExecuteRequest{
-		Code:  code,
-		Input: input,
+		Code:          code,
+		Input:         input,
+		TimeLimitMS:   timeLimitMS,
+		MemoryLimitKB: memoryLimitKB,
 	})
 
 	if err != nil {
@@ -43,14 +45,16 @@ func (e *Executor) Run(language, code, input string) (runners.ExecuteResult, int
 
 // RunBatch executes code once and runs it against multiple inputs in a single container.
 // Accepts a context for cancellation support (early exit on failure).
-func (e *Executor) RunBatch(ctx context.Context, language, code string, inputs []string) ([]runners.ExecuteResult, int64, error) {
+func (e *Executor) RunBatch(ctx context.Context, language, code string, inputs []string, timeLimitMS int64, memoryLimitKB int64) ([]runners.ExecuteResult, int64, error) {
 	r, err := e.factory.GetRunner(language)
 	if err != nil {
 		return nil, 0, err
 	}
 
 	return r.RunBatch(ctx, &runners.BatchRequest{
-		Code:   code,
-		Inputs: inputs,
+		Code:          code,
+		Inputs:        inputs,
+		TimeLimitMS:   timeLimitMS,
+		MemoryLimitKB: memoryLimitKB,
 	})
 }

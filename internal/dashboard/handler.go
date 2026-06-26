@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/code-execution-engine/internal/server/utility"
 	"github.com/gin-gonic/gin"
@@ -98,4 +99,36 @@ func (h *Handler) RevokeKey(c *gin.Context) {
 	}
 
 	utility.SuccessResponse(c, http.StatusOK, "API key revoked successfully", nil)
+}
+
+// GetJobs handles GET /api/v1/dashboard/jobs
+func (h *Handler) GetJobs(c *gin.Context) {
+	userID := c.MustGet("user_id").(uuid.UUID)
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	lang := c.Query("language")
+	status := c.Query("status")
+	apiKeyID := c.Query("api_key_id")
+
+	resp, err := h.service.GetJobs(userID, page, limit, lang, status, apiKeyID)
+	if err != nil {
+		utility.ErrorResponse(c, http.StatusInternalServerError, "Failed to retrieve job log history", err.Error())
+		return
+	}
+
+	utility.SuccessResponse(c, http.StatusOK, "Job logs retrieved successfully", resp)
+}
+
+// GetMetrics handles GET /api/v1/dashboard/metrics
+func (h *Handler) GetMetrics(c *gin.Context) {
+	userID := c.MustGet("user_id").(uuid.UUID)
+
+	resp, err := h.service.GetMetrics(userID)
+	if err != nil {
+		utility.ErrorResponse(c, http.StatusInternalServerError, "Failed to retrieve dashboard metrics", err.Error())
+		return
+	}
+
+	utility.SuccessResponse(c, http.StatusOK, "Dashboard metrics retrieved successfully", resp)
 }

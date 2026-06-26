@@ -1,24 +1,40 @@
 package auth
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/code-execution-engine/internal/models"
+	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 )
 
+const (
+	sessionPrefix = "session:"
+	sessionTTL    = 24 * time.Hour
+)
+
+// SessionData is serialized and stored in Redis under the session token.
+type SessionData struct {
+	UserID uuid.UUID `json:"user_id"`
+	Email  string    `json:"email"`
+}
+
 // Service implements the business logic for authentication.
 type Service struct {
-	repo      *Repository
-	jwtSecret string
+	repo        *Repository
+	redisClient *redis.Client
 }
 
 // NewService creates a new auth service.
-func NewService(repo *Repository, jwtSecret string) *Service {
-	return &Service{repo: repo, jwtSecret: jwtSecret}
+func NewService(repo *Repository, redisClient *redis.Client) *Service {
+	return &Service{repo: repo, redisClient: redisClient}
 }
 
 // Register creates a new user account.
@@ -49,8 +65,8 @@ func (s *Service) Register(req RegisterRequest) (*UserResponse, error) {
 	return &resp, nil
 }
 
-// Login authenticates a user and returns a JWT.
-func (s *Service) Login(req LoginRequest) (*LoginResponse, error) {
+// Login authenticates a user, creates a session in Redis, and returns a session ID.
+func (s *Service) Login(ctx context.Context, req LoginRequest) (*LoginResponse, error) {
 	user, err := s.repo.GetUserByEmail(req.Email)
 	if err != nil {
 		return nil, errors.New("invalid email or password")
@@ -60,15 +76,62 @@ func (s *Service) Login(req LoginRequest) (*LoginResponse, error) {
 		return nil, errors.New("invalid email or password")
 	}
 
-	token, err := GenerateToken(user.ID, user.Email, s.jwtSecret)
+	sessionID, err := s.CreateSession(ctx, user.ID, user.Email)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate token: %w", err)
+		return nil, fmt.Errorf("failed to create session: %w", err)
 	}
 
 	return &LoginResponse{
-		Token: token,
-		User:  ToUserResponse(user),
+		SessionID: sessionID,
+		User:      ToUserResponse(user),
 	}, nil
+}
+
+// CreateSession generates a new session token, stores the user metadata in Redis, and returns the token.
+func (s *Service) CreateSession(ctx context.Context, userID uuid.UUID, email string) (string, error) {
+	sessionID := uuid.New().String()
+	data := SessionData{
+		UserID: userID,
+		Email:  email,
+	}
+
+	bytes, err := json.Marshal(data)
+	if err != nil {
+		return "", err
+	}
+
+	err = s.redisClient.Set(ctx, sessionPrefix+sessionID, bytes, sessionTTL).Err()
+	if err != nil {
+		return "", err
+	}
+
+	return sessionID, nil
+}
+
+// ValidateSession verifies a session token and refreshes its sliding TTL.
+func (s *Service) ValidateSession(ctx context.Context, sessionID string) (*SessionData, error) {
+	val, err := s.redisClient.Get(ctx, sessionPrefix+sessionID).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return nil, errors.New("session not found or expired")
+		}
+		return nil, err
+	}
+
+	var data SessionData
+	if err := json.Unmarshal([]byte(val), &data); err != nil {
+		return nil, err
+	}
+
+	// Slide expiration
+	_ = s.redisClient.Expire(ctx, sessionPrefix+sessionID, sessionTTL)
+
+	return &data, nil
+}
+
+// DeleteSession revokes a session by deleting it from Redis.
+func (s *Service) DeleteSession(ctx context.Context, sessionID string) error {
+	return s.redisClient.Del(ctx, sessionPrefix+sessionID).Err()
 }
 
 // ValidateAPIKey checks if a raw API key is valid and returns the associated user and key.
@@ -86,11 +149,6 @@ func (s *Service) ValidateAPIKey(rawKey string) (*models.User, *models.APIKey, e
 	}()
 
 	return &apiKey.User, apiKey, nil
-}
-
-// JWTSecret returns the JWT secret for use by middlewares.
-func (s *Service) JWTSecret() string {
-	return s.jwtSecret
 }
 
 // hashKey computes the SHA-256 hex digest of a raw API key.

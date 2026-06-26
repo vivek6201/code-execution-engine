@@ -8,10 +8,11 @@ import (
 )
 
 const (
-	javaImage      = "openjdk:17.0.1-jdk-slim"
-	javaFilename   = "Main.java"
-	javaCompileCmd = "javac Main.java"
-	javaRunCmd     = "java Main"
+	javaCompilerImage = "openjdk:17.0.1-jdk-slim"
+	javaRuntimeImage  = "eclipse-temurin:17-jre"
+	javaFilename      = "Main.java"
+	javaCompileCmd    = "javac Main.java"
+	javaRunCmd        = "java Main"
 )
 
 type JavaRunner struct {
@@ -23,7 +24,7 @@ func NewJavaRunner(client *isolation.Client) *JavaRunner {
 }
 
 func (r *JavaRunner) Run(ctx context.Context, req *runners.ExecuteRequest) (*runners.ExecuteResult, int64, error) {
-	res, memKB, err := r.client.Run(ctx, javaImage, javaFilename, req.Code, javaCompileCmd+" && "+javaRunCmd, req.Input)
+	res, memKB, err := r.client.Run(ctx, javaCompilerImage, javaRuntimeImage, javaFilename, req.Code, javaCompileCmd, javaRunCmd, []string{"Main.class"}, req.Input, req.MemoryLimitKB*1024, req.TimeLimitMS)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -31,7 +32,7 @@ func (r *JavaRunner) Run(ctx context.Context, req *runners.ExecuteRequest) (*run
 }
 
 func (r *JavaRunner) RunBatch(ctx context.Context, req *runners.BatchRequest) ([]runners.ExecuteResult, int64, error) {
-	results, memKB, err := r.client.RunBatch(ctx, javaImage, javaFilename, req.Code, javaCompileCmd, javaRunCmd, req.Inputs)
+	results, memKB, err := r.client.RunBatch(ctx, javaCompilerImage, javaRuntimeImage, javaFilename, req.Code, javaCompileCmd, javaRunCmd, []string{"Main.class"}, req.Inputs, req.MemoryLimitKB*1024, req.TimeLimitMS)
 	if err != nil {
 		return nil, 0, err
 	}

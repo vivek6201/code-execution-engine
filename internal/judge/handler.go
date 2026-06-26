@@ -2,11 +2,12 @@ package judge
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/code-execution-engine/internal/models"
-	"github.com/code-execution-engine/pkg/queue"
 	"github.com/code-execution-engine/internal/server/utility"
 	"github.com/code-execution-engine/internal/types"
+	"github.com/code-execution-engine/pkg/queue"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -42,6 +43,36 @@ func (h *Handler) RunCode(c *gin.Context) {
 		return
 	}
 
+	userID := c.MustGet("user_id").(uuid.UUID)
+	apiKey := c.MustGet("api_key").(*models.APIKey)
+	planLimits := c.MustGet("plan_limits").(models.PlanLimits)
+
+	// Validate and default custom limits
+	var timeLimitVal int64 = planLimits.MaxTimeLimitMS
+	if req.TimeLimitMS != nil {
+		if *req.TimeLimitMS <= 0 || *req.TimeLimitMS > planLimits.MaxTimeLimitMS {
+			utility.ErrorResponse(c, http.StatusBadRequest, "Validation failed", "time_limit_ms exceeds your plan limits")
+			return
+		}
+		timeLimitVal = *req.TimeLimitMS
+	}
+
+	var memLimitVal int64 = planLimits.MaxMemoryLimitKB
+	if req.MemoryLimitKB != nil {
+		if *req.MemoryLimitKB <= 0 || *req.MemoryLimitKB > planLimits.MaxMemoryLimitKB {
+			utility.ErrorResponse(c, http.StatusBadRequest, "Validation failed", "memory_limit_kb exceeds your plan limits")
+			return
+		}
+		memLimitVal = *req.MemoryLimitKB
+	}
+
+	if req.CallbackURL != nil && *req.CallbackURL != "" {
+		if !strings.HasPrefix(*req.CallbackURL, "http://") && !strings.HasPrefix(*req.CallbackURL, "https://") {
+			utility.ErrorResponse(c, http.StatusBadRequest, "Validation failed", "invalid callback_url format")
+			return
+		}
+	}
+
 	j := types.Job{
 		Code:     req.Code,
 		Language: req.Language,
@@ -56,24 +87,24 @@ func (h *Handler) RunCode(c *gin.Context) {
 
 	jobID := uuid.New()
 
-	userID := c.MustGet("user_id").(uuid.UUID)
-	apiKey := c.MustGet("api_key").(*models.APIKey)
-
 	jobRecord := JobRecord{
-		ID:        jobID,
-		UserID:    userID,
-		APIKeyID:  apiKey.ID,
-		Language:  req.Language,
-		Code:      req.Code,
-		Status:    types.StatusQueued,
-		Total:     len(req.TestCases),
+		ID:            jobID,
+		UserID:        userID,
+		APIKeyID:      apiKey.ID,
+		Language:      req.Language,
+		Code:          req.Code,
+		Status:        types.StatusQueued,
+		Total:         len(req.TestCases),
+		TimeLimitMS:   &timeLimitVal,
+		MemoryLimitKB: &memLimitVal,
+		CallbackURL:   req.CallbackURL,
 	}
 	if err := h.repo.CreateJob(&jobRecord); err != nil {
 		utility.ErrorResponse(c, http.StatusInternalServerError, "Failed to create job record", err.Error())
 		return
 	}
 
-	if err := h.queue.Enqueue(c.Request.Context(), jobID.String(), j); err != nil {
+	if err := h.queue.Enqueue(c.Request.Context(), jobID.String(), j, &timeLimitVal, &memLimitVal, req.CallbackURL); err != nil {
 		// Try to mark job as failed in DB
 		_ = h.repo.UpdateJobResult(jobID, UpdateJobDTO{
 			Status:     types.StatusError,

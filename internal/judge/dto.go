@@ -14,10 +14,13 @@ type TestCaseDTO struct {
 
 // CreateJobRequest is the payload for submitting a code execution job.
 type CreateJobRequest struct {
-	Code      string        `json:"code" binding:"required"`
-	Language  string        `json:"language" binding:"required"`
-	Input     string        `json:"input"`
-	TestCases []TestCaseDTO `json:"test_cases,omitempty" binding:"omitempty,dive"`
+	Code          string        `json:"code" binding:"required"`
+	Language      string        `json:"language" binding:"required"`
+	Input         string        `json:"input,omitempty"`
+	TestCases     []TestCaseDTO `json:"test_cases,omitempty" binding:"omitempty,dive"`
+	TimeLimitMS   *int64        `json:"time_limit_ms,omitempty"`
+	MemoryLimitKB *int64        `json:"memory_limit_kb,omitempty"`
+	CallbackURL   *string       `json:"callback_url,omitempty"`
 }
 
 // Validate checks that the language is supported.

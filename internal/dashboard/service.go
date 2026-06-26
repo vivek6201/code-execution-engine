@@ -93,6 +93,72 @@ func (s *Service) RevokeAPIKey(userID, keyID uuid.UUID) error {
 	return s.repo.RevokeAPIKey(keyID, userID)
 }
 
+// GetJobs returns a paginated list of job execution history for a user.
+func (s *Service) GetJobs(userID uuid.UUID, page, limit int, lang, status, apiKeyID string) (*PaginatedJobsResponse, error) {
+	if page <= 0 {
+		page = 1
+	}
+	if limit <= 0 || limit > 100 {
+		limit = 10
+	}
+
+	jobs, total, err := s.repo.ListJobsPaginated(userID, page, limit, lang, status, apiKeyID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PaginatedJobsResponse{
+		Jobs:       jobs,
+		TotalCount: total,
+		Page:       page,
+		Limit:      limit,
+	}, nil
+}
+
+// GetMetrics aggregates multi-dimensional usage data for dashboard visualization.
+func (s *Service) GetMetrics(userID uuid.UUID) (*DashboardMetricsResponse, error) {
+	statusDist, err := s.repo.GetStatusMetrics(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	langDist, err := s.repo.GetLanguageMetrics(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	perf, err := s.repo.GetPerformanceMetrics(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	usage, err := s.repo.GetDailyUsageMetrics(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Default to empty array if nil to keep JSON format clean
+	if statusDist == nil {
+		statusDist = []StatusMetric{}
+	}
+	if langDist == nil {
+		langDist = []LanguageMetric{}
+	}
+	if perf == nil {
+		perf = []PerformanceMetric{}
+	}
+	if usage == nil {
+		usage = []DailyMetric{}
+	}
+
+	return &DashboardMetricsResponse{
+		StatusDistribution: statusDist,
+		LangDistribution:   langDist,
+		Performance:        perf,
+		UsageOverTime:      usage,
+	}, nil
+}
+
 // hashKey computes the SHA-256 hex digest of a raw API key.
 func hashKey(rawKey string) string {
 	h := sha256.Sum256([]byte(rawKey))
