@@ -17,7 +17,7 @@ graph TD
     API -->|3. Enqueue Task| Queue[Asynq Task Queue]
     Queue -->|4. Pull Job| Worker[Worker Server]
     
-    subgraph Sandbox Isolation (Strategy A)
+    subgraph "Sandbox Isolation (Strategy A)"
         Worker -->|5. Compile Code| CC[Compiler Container]
         CC -->|6. Extract Binary/Classes| Worker
         Worker -->|7. Load Binary| RC[Runtime Container]
